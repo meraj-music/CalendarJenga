@@ -1,0 +1,652 @@
+<meta charset="utf-8">
+<title>Calendar Jenga</title>
+<style>
+  :root {
+    --paper: #fbfaf7;
+    --card: #ffffff;
+    --ink: #1a1a1a;
+    --ink-2: #4b4845;
+    --mute: #8a857d;
+    --line: #e8e3d8;
+    --line-2: #d6cfc0;
+    --match: #1e5d3a;
+    --match-bg: #e6efe2;
+    --warn: #8a5a10;
+    --warn-bg: #f5ecd6;
+    --error: #8a2010;
+    --error-bg: #f5d6cf;
+    --shadow: 0 1px 0 rgba(0,0,0,0.02), 0 2px 8px rgba(0,0,0,0.04);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", system-ui, "Segoe UI", sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+    padding: 24px;
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+  .mono { font-family: ui-monospace, "JetBrains Mono", "SF Mono", "Menlo", monospace; }
+  header { margin-bottom: 24px; }
+  h1 {
+    margin: 0 0 4px;
+    font-size: 28px;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+  }
+  .sub { color: var(--ink-2); font-size: 14px; max-width: 640px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 18px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+  }
+  .card h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--mute);
+    font-weight: 600;
+    margin: 0 0 14px;
+  }
+  .card h2 .num { color: var(--ink); margin-right: 8px; }
+  .row { display: grid; gap: 14px; }
+  .cols-3 { grid-template-columns: 1.2fr 1fr 1fr; }
+  .setup-row { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; align-items: start; }
+  @media (max-width: 720px) {
+    .cols-3, .setup-row { grid-template-columns: 1fr; }
+  }
+  label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--mute);
+    font-weight: 600;
+    margin-bottom: 5px;
+  }
+  input, textarea, select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--line-2);
+    border-radius: 5px;
+    font-size: 14px;
+    font-family: inherit;
+    background: var(--card);
+    color: var(--ink);
+  }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--ink); outline-offset: -2px; border-color: var(--ink); }
+  textarea { resize: vertical; }
+  textarea.mono { font-family: ui-monospace, "JetBrains Mono", "SF Mono", "Menlo", monospace; font-size: 13px; line-height: 1.5; }
+  .help { font-size: 12px; color: var(--mute); margin: 6px 0 0; }
+  .help code, .inline-code { background: var(--paper); padding: 1px 5px; border-radius: 3px; font-size: 12px; border: 1px solid var(--line); font-family: ui-monospace, monospace; }
+  .gap8 { height: 8px; }
+  .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  button {
+    background: var(--ink);
+    color: var(--card);
+    border: none;
+    padding: 10px 18px;
+    border-radius: 5px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  button:hover { background: #000; }
+  button:disabled { opacity: 0.55; cursor: progress; }
+  button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line-2); }
+  button.ghost:hover { background: var(--paper); border-color: var(--ink); }
+  button.google {
+    background: white;
+    color: var(--ink);
+    border: 1px solid var(--line-2);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    justify-content: center;
+  }
+  button.google:hover { background: var(--paper); border-color: var(--ink); }
+  button.google svg { width: 18px; height: 18px; }
+  .status { font-size: 13px; color: var(--mute); }
+  .status .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--mute); margin-right: 6px; vertical-align: middle; animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+  .conn-status { display: block; padding: 8px 10px; border-radius: 5px; font-size: 13px; background: var(--paper); border: 1px solid var(--line-2); margin-top: 8px; color: var(--mute); }
+  .conn-status.ok { background: var(--match-bg); color: var(--match); border-color: var(--match); }
+  .conn-status.err { background: var(--error-bg); color: var(--error); border-color: var(--error); }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--mute);
+    font-weight: 600;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tr.open td { color: var(--mute); }
+  tr.match td { background: var(--match-bg); }
+  tr.match td:first-child { border-left: 3px solid var(--match); padding-left: 12px; }
+  .day-header {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--mute);
+    margin: 18px 0 6px;
+    font-weight: 600;
+  }
+  .day-header:first-child { margin-top: 0; }
+  .pill {
+    display: inline-block;
+    padding: 2px 8px;
+    background: var(--paper);
+    border: 1px solid var(--line-2);
+    border-radius: 999px;
+    font-size: 12px;
+    margin: 1px 2px 1px 0;
+    color: var(--ink-2);
+    font-family: ui-monospace, monospace;
+  }
+  .pill.busy { color: var(--error); border-color: var(--error); background: var(--error-bg); }
+  .time { font-family: ui-monospace, monospace; font-weight: 600; font-size: 14px; letter-spacing: -0.02em; }
+  .acct { font-weight: 600; color: var(--ink); }
+  .warn-box {
+    background: var(--warn-bg);
+    border: 1px solid var(--warn);
+    color: var(--warn);
+    padding: 12px 14px;
+    border-radius: 6px;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  .warn-box ul { margin: 6px 0 0; padding-left: 20px; }
+  .err-box {
+    background: var(--error-bg);
+    border: 1px solid var(--error);
+    color: var(--error);
+    padding: 12px 14px;
+    border-radius: 6px;
+    margin: 14px 0;
+    font-size: 13px;
+  }
+  .check-icon { color: var(--match); font-weight: 700; }
+  .x-icon { color: var(--error); font-weight: 700; }
+  details { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+  details summary { cursor: pointer; color: var(--ink-2); font-size: 13px; font-weight: 600; padding: 4px 0; user-select: none; }
+  details summary:hover { color: var(--ink); }
+  details[open] summary { margin-bottom: 8px; }
+  details ol { padding-left: 22px; margin: 10px 0; font-size: 13px; line-height: 1.6; }
+  details ol li { margin-bottom: 6px; }
+  details p { margin: 10px 0; font-size: 13px; line-height: 1.55; }
+  details a { color: var(--ink); }
+  .meeting-detail { padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 10px; background: var(--card); }
+  .meeting-detail h4 { margin: 0 0 6px; font-size: 14px; }
+  .meeting-detail .emails { margin-bottom: 8px; font-size: 12px; }
+  .copied { color: var(--match); font-weight: 600; font-size: 13px; }
+  footer { margin-top: 24px; font-size: 12px; color: var(--mute); text-align: center; padding: 12px; }
+  footer a { color: var(--mute); }
+</style>
+
+<header>
+  <h1>Calendar Jenga</h1>
+  <p class="sub">Pick the time window, add invitee email address(es), and let Calendar Jenga sort your meetings based on everyone's availability.</p>
+</header>
+
+<div class="card">
+  <h2><span class="num">01</span>Setup</h2>
+  <div class="setup-row">
+    <div>
+      <label>Google OAuth Client ID</label>
+      <input id="clientId" type="text" placeholder="123456789-xxxxxx.apps.googleusercontent.com" autocomplete="off">
+      <p class="help">Stored only in your browser (localStorage). Used to authenticate you with Google directly — no third party.</p>
+    </div>
+    <div>
+      <label>Calendar access</label>
+      <button class="google" onclick="connectGoogle()" id="connectBtn">
+        <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
+        Continue with Google
+      </button>
+      <div id="connectStatus" class="conn-status">— not connected</div>
+    </div>
+  </div>
+  <details>
+    <summary>Admin setup (free, one-time, ~5 min)</summary>
+    <p>This only needs to be done once by whoever manages the tool. Everyone else just clicks "Continue with Google" and they're in.</p>
+    <ol>
+      <li>Go to <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">console.cloud.google.com</a> and create a project (or pick an existing one).</li>
+      <li>In <b>APIs &amp; Services → Library</b>, search for and enable the <b>Google Calendar API</b>.</li>
+      <li>In <b>APIs &amp; Services → OAuth consent screen</b>:
+        <br>— Set User Type to <b>External</b> (so anyone with a Google account can use it).
+        <br>— Fill in app name (e.g. "Calendar Jenga") and your email.
+        <br>— Add the scope <span class="inline-code">calendar.freebusy</span> (non-sensitive — read-only free/busy times, no event details).
+        <br>— <b>Important:</b> Click <b>Publish App</b> to move out of "Testing" mode. Since <span class="inline-code">calendar.freebusy</span> is non-sensitive, publishing is instant — no Google review required. Without publishing, only manually-added test users (max 100) can sign in.</li>
+      <li>In <b>APIs &amp; Services → Credentials → Create credentials → OAuth client ID</b>, choose application type <b>Web application</b>.</li>
+      <li>Under <b>Authorized JavaScript origins</b>, add: <span class="inline-code">https://meraj-music.github.io</span> (no trailing slash, no path).</li>
+      <li>Copy the <b>Client ID</b> Google gives you and paste it in the field above.</li>
+    </ol>
+    <p><b>For users:</b> Once the admin has set up the Client ID and published the app, anyone can visit this page, paste the Client ID (or the admin can hardcode it), click "Continue with Google", and start scheduling. Each user only sees free/busy data for calendars they have access to.</p>
+    <p><b>Privacy:</b> This tool runs entirely in your browser. No data is sent to any server other than Google's Calendar API. The OAuth scope is <span class="inline-code">calendar.freebusy</span> only — read-only access to busy/free times, no event details, no write access.</p>
+  </details>
+</div>
+
+<div class="card">
+  <h2><span class="num">02</span>Window</h2>
+  <div class="row cols-3">
+    <div>
+      <label>Dates (one per line, YYYY-MM-DD)</label>
+      <textarea id="dates" class="mono" rows="3">2026-07-08
+2026-07-10</textarea>
+    </div>
+    <div>
+      <label>Start</label>
+      <input id="start" type="time" value="10:00">
+      <div class="gap8"></div>
+      <label>End</label>
+      <input id="end" type="time" value="12:00">
+    </div>
+    <div>
+      <label>Slot length (min)</label>
+      <input id="duration" type="number" value="30" min="15" step="15">
+      <div class="gap8"></div>
+      <label>Timezone</label>
+      <select id="tz">
+        <option value="America/Chicago">CT — Central</option>
+        <option value="America/New_York">ET — Eastern</option>
+        <option value="America/Denver">MT — Mountain</option>
+        <option value="America/Los_Angeles">PT — Pacific</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2><span class="num">03</span>Meetings</h2>
+  <p class="help">One per line. Format: <code>Meeting name | email1@co.com, email2@co.com</code> — drop in real emails. Up to ~7 attendees per row.</p>
+  <textarea id="meetings" class="mono" rows="10">Organon | brooke.foote@yourco.com, steve.g@yourco.com, lucian.m@yourco.com
+TDX Tech LLC | alex.molnau@yourco.com, alex.vollhaber@yourco.com
+Intelligent Water Solutions | amber.mullins@yourco.com, dana.fallon@yourco.com
+Spectrum VoIP | erik.rutt@yourco.com, mike.hankner@yourco.com
+Ingram Micro | erika.kensington@yourco.com, dana.fallon@yourco.com
+Daktronics | alex.molnau@yourco.com, damarlin.wright@yourco.com
+Connection | amber.mullins@yourco.com, steve.gole@yourco.com
+Trafera | katie.rihm@yourco.com, brooke.critchley@yourco.com</textarea>
+  <div class="gap8"></div>
+  <div class="actions">
+    <button onclick="run()" id="goBtn">Find a fit</button>
+    <span class="status" id="statusMsg"></span>
+  </div>
+</div>
+
+<div id="output"></div>
+
+<footer>Open source, no backend, no data collection. Runs entirely in your browser. Talks to Google Calendar directly via OAuth 2.0 (scope: <span class="inline-code">calendar.freebusy</span>). <a href="https://github.com/meraj-music/CalendarJenga" target="_blank" rel="noopener">Source on GitHub</a>.</footer>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+// ──────────────────────────────────────────────────────────────
+// Google OAuth state
+// ──────────────────────────────────────────────────────────────
+let tokenClient = null;
+let accessToken = null;
+let tokenExpiry = 0;
+
+// Restore saved Client ID (only works when served over http/https, not in sandboxed previews)
+try {
+  const saved = localStorage.getItem('calendarJengaClientId');
+  if (saved) document.getElementById('clientId').value = saved;
+} catch (e) { /* sandboxed — ignore */ }
+
+document.getElementById('clientId').addEventListener('change', (e) => {
+  try { localStorage.setItem('calendarJengaClientId', e.target.value.trim()); } catch (e) {}
+  tokenClient = null; // force re-init with new ID
+});
+
+function setConnStatus(text, cls) {
+  const el = document.getElementById('connectStatus');
+  el.className = 'conn-status' + (cls ? ' ' + cls : '');
+  el.innerHTML = text;
+}
+
+function initTokenClient() {
+  if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+    throw new Error('Google Sign-In script not loaded yet. Please wait a moment and try again, or check your internet connection.');
+  }
+  const clientId = document.getElementById('clientId').value.trim();
+  if (!clientId) throw new Error('Paste your Google OAuth Client ID first.');
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'https://www.googleapis.com/auth/calendar.freebusy',
+    callback: (response) => {
+      if (response.error) {
+        setConnStatus(`<span class="x-icon">✗</span> ${escapeHTML(response.error)}: ${escapeHTML(response.error_description || '')}`, 'err');
+        return;
+      }
+      accessToken = response.access_token;
+      tokenExpiry = Date.now() + ((response.expires_in || 3600) * 1000);
+      setConnStatus('<span class="check-icon">✓</span> Connected to Google Calendar', 'ok');
+      document.getElementById('connectBtn').lastChild.textContent = ' Reconnect Google';
+    },
+  });
+}
+
+function connectGoogle() {
+  try {
+    if (!tokenClient) initTokenClient();
+    tokenClient.requestAccessToken();
+  } catch (err) {
+    setConnStatus(`<span class="x-icon">✗</span> ${escapeHTML(err.message)}`, 'err');
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// Time / slot helpers
+// ──────────────────────────────────────────────────────────────
+const TZ_OFFSET_JULY = {
+  'America/Chicago': -5,
+  'America/New_York': -4,
+  'America/Denver': -6,
+  'America/Los_Angeles': -7,
+};
+
+function offsetStr(hours) {
+  const sign = hours >= 0 ? '+' : '-';
+  const abs = Math.abs(hours);
+  const wholeH = Math.floor(abs);
+  const wholeM = Math.round((abs - wholeH) * 60);
+  return `${sign}${String(wholeH).padStart(2,'0')}:${String(wholeM).padStart(2,'0')}`;
+}
+
+function parseMeetings() {
+  return document.getElementById('meetings').value
+    .split('\n')
+    .map(l => l.trim())
+    .filter(Boolean)
+    .map((line, i) => {
+      const parts = line.split('|');
+      const name = (parts[0] || '').trim();
+      const emailsStr = (parts[1] || '').trim();
+      const emails = emailsStr.split(',').map(s => s.trim()).filter(Boolean);
+      return { id: i, name, emails };
+    })
+    .filter(m => m.name && m.emails.length > 0);
+}
+
+function buildSlots() {
+  const dates = document.getElementById('dates').value.split('\n').map(s => s.trim()).filter(Boolean);
+  const [sh, sm] = document.getElementById('start').value.split(':').map(Number);
+  const [eh, em] = document.getElementById('end').value.split(':').map(Number);
+  const duration = parseInt(document.getElementById('duration').value);
+  const tz = document.getElementById('tz').value;
+  const off = offsetStr(TZ_OFFSET_JULY[tz] || 0);
+
+  const slots = [];
+  for (const date of dates) {
+    let h = sh, m = sm;
+    const endTotal = eh * 60 + em;
+    while (h * 60 + m + duration <= endTotal) {
+      const startStr = `${date}T${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:00${off}`;
+      const totalEnd = h * 60 + m + duration;
+      const eh2 = Math.floor(totalEnd / 60);
+      const em2 = totalEnd % 60;
+      const endStr = `${date}T${String(eh2).padStart(2,'0')}:${String(em2).padStart(2,'0')}:00${off}`;
+      const dateObj = new Date(`${date}T12:00:00${off}`);
+      const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long', timeZone: tz });
+      const monthDay = dateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric', timeZone: tz });
+      const hour12 = h === 0 ? 12 : (h > 12 ? h - 12 : h);
+      const ampm = h >= 12 ? 'pm' : 'am';
+      const timeLabel = `${hour12}:${String(m).padStart(2,'0')} ${ampm}`;
+      slots.push({
+        date, dayName, monthDay, timeLabel,
+        startISO: startStr, endISO: endStr,
+        startMs: new Date(startStr).getTime(),
+        endMs: new Date(endStr).getTime(),
+      });
+      m += duration;
+      while (m >= 60) { m -= 60; h++; }
+    }
+  }
+  return slots;
+}
+
+// ──────────────────────────────────────────────────────────────
+// Direct Google Calendar freeBusy call
+// ──────────────────────────────────────────────────────────────
+async function fetchFreeBusy(emails, timeMin, timeMax, timeZone) {
+  if (!accessToken || Date.now() > tokenExpiry) {
+    throw new Error('Not connected to Google Calendar — click "Continue with Google" in Setup first.');
+  }
+  const response = await fetch('https://www.googleapis.com/calendar/v3/freeBusy', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      timeMin, timeMax, timeZone,
+      items: emails.map(e => ({ id: e })),
+    }),
+  });
+  if (!response.ok) {
+    const errTxt = await response.text();
+    throw new Error(`Calendar API ${response.status}: ${errTxt.slice(0, 400)}`);
+  }
+  const data = await response.json();
+  const result = { busy: {}, errors: {} };
+  for (const email of emails) {
+    const cal = (data.calendars || {})[email];
+    if (!cal) {
+      result.errors[email] = 'no response';
+      result.busy[email] = [];
+    } else if (cal.errors && cal.errors.length > 0) {
+      result.errors[email] = cal.errors.map(e => e.reason).join(', ');
+      result.busy[email] = [];
+    } else {
+      result.busy[email] = cal.busy || [];
+    }
+  }
+  return result;
+}
+
+// ──────────────────────────────────────────────────────────────
+// Main run
+// ──────────────────────────────────────────────────────────────
+async function run() {
+  const goBtn = document.getElementById('goBtn');
+  const statusMsg = document.getElementById('statusMsg');
+  const output = document.getElementById('output');
+
+  goBtn.disabled = true;
+  statusMsg.innerHTML = '<span class="dot"></span>Checking calendars…';
+  output.innerHTML = '';
+
+  try {
+    const meetings = parseMeetings();
+    if (meetings.length === 0) throw new Error('No meetings parsed. Each line needs "Meeting | email, email".');
+
+    const slots = buildSlots();
+    if (slots.length === 0) throw new Error('No slots in the time window — check dates and times.');
+
+    const allEmails = [...new Set(meetings.flatMap(m => m.emails))];
+    const tz = document.getElementById('tz').value;
+    const dates = document.getElementById('dates').value.split('\n').map(s => s.trim()).filter(Boolean);
+
+    const off = offsetStr(TZ_OFFSET_JULY[tz] || 0);
+    const timeMin = `${dates[0]}T00:00:00${off}`;
+    const timeMax = `${dates[dates.length - 1]}T23:59:59${off}`;
+
+    const result = await fetchFreeBusy(allEmails, timeMin, timeMax, tz);
+
+    render(meetings, slots, result);
+    statusMsg.textContent = '';
+  } catch (err) {
+    output.innerHTML = `<div class="err-box"><b>Couldn't run.</b> ${escapeHTML(err.message)}</div>`;
+    statusMsg.textContent = '';
+  } finally {
+    goBtn.disabled = false;
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// Slot matching + assignment
+// ──────────────────────────────────────────────────────────────
+function overlaps(slot, busy) {
+  const bStart = new Date(busy.start).getTime();
+  const bEnd = new Date(busy.end).getTime();
+  if (isNaN(bStart) || isNaN(bEnd)) return false;
+  return slot.startMs < bEnd && bStart < slot.endMs;
+}
+
+function findAvailable(meeting, slots, busyMap) {
+  return slots.filter(slot => meeting.emails.every(email => {
+    const busy = busyMap[email] || [];
+    return !busy.some(b => overlaps(slot, b));
+  }));
+}
+
+function busyAttendees(meeting, slot, busyMap) {
+  return meeting.emails.filter(email => {
+    const busy = busyMap[email] || [];
+    return busy.some(b => overlaps(slot, b));
+  });
+}
+
+function assignMeetings(meetings, slots, busyMap) {
+  const avail = meetings.map(m => ({ m, slots: findAvailable(m, slots, busyMap) }));
+  avail.sort((a, b) => a.slots.length - b.slots.length);
+  const assigned = {};
+  function tryAssign(idx) {
+    if (idx >= avail.length) return true;
+    const { m, slots: opts } = avail[idx];
+    for (const slot of opts) {
+      const key = slot.startISO;
+      if (assigned[key]) continue;
+      assigned[key] = m;
+      if (tryAssign(idx + 1)) return true;
+      delete assigned[key];
+    }
+    return false;
+  }
+  tryAssign(0);
+  return assigned;
+}
+
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]);
+}
+
+// ──────────────────────────────────────────────────────────────
+// Render
+// ──────────────────────────────────────────────────────────────
+function render(meetings, slots, result) {
+  const busyMap = result.busy || {};
+  const errors = result.errors || {};
+  const assigned = assignMeetings(meetings, slots, busyMap);
+  const assignedIds = new Set(Object.values(assigned).map(m => m.id));
+  const unassigned = meetings.filter(m => !assignedIds.has(m.id));
+
+  let html = '<div class="card"><h2><span class="num">04</span>Schedule</h2>';
+
+  const byDate = {};
+  for (const slot of slots) {
+    if (!byDate[slot.date]) byDate[slot.date] = [];
+    byDate[slot.date].push(slot);
+  }
+
+  for (const date of Object.keys(byDate)) {
+    const first = byDate[date][0];
+    html += `<div class="day-header">${first.dayName}, ${first.monthDay}</div>`;
+    html += '<table><thead><tr><th style="width:120px;">Time</th><th>Meeting</th><th>Attendees</th></tr></thead><tbody>';
+    for (const slot of byDate[date]) {
+      const m = assigned[slot.startISO];
+      if (m) {
+        html += `<tr class="match"><td><span class="time">${slot.timeLabel}</span></td><td><span class="acct">${escapeHTML(m.name)}</span></td><td>${m.emails.map(e => `<span class="pill">${escapeHTML(e)}</span>`).join('')}</td></tr>`;
+      } else {
+        html += `<tr class="open"><td><span class="time">${slot.timeLabel}</span></td><td colspan="2">— open</td></tr>`;
+      }
+    }
+    html += '</tbody></table>';
+  }
+
+  html += '<div class="gap8"></div><div class="gap8"></div>';
+  html += '<div class="actions"><button class="ghost" onclick="copyTSV()">Copy as TSV</button><span class="status" id="copyMsg"></span></div>';
+  html += '</div>';
+
+  if (unassigned.length > 0) {
+    html += '<div class="warn-box"><b>Couldn\'t place all meetings.</b><ul>';
+    for (const m of unassigned) {
+      const opts = findAvailable(m, slots, busyMap);
+      const reason = opts.length === 0
+        ? 'no slot has every attendee free in this window'
+        : `${opts.length} possible slot(s), but they were all claimed by other meetings — try a wider window`;
+      html += `<li><b>${escapeHTML(m.name)}</b> — ${reason}</li>`;
+    }
+    html += '</ul></div>';
+  }
+
+  if (Object.keys(errors).length > 0) {
+    html += '<div class="warn-box"><b>Calendar lookup notes:</b><ul>';
+    for (const [email, reason] of Object.entries(errors)) {
+      html += `<li><span class="mono">${escapeHTML(email)}</span> — ${escapeHTML(reason)}. Treated as fully available.</li>`;
+    }
+    html += '</ul></div>';
+  }
+
+  html += '<div class="card"><h2><span class="num">05</span>Per-meeting availability</h2>';
+  html += '<details><summary>Show conflict detail for each meeting</summary>';
+  for (const m of meetings) {
+    html += '<div class="meeting-detail">';
+    html += `<h4>${escapeHTML(m.name)}</h4>`;
+    html += `<div class="emails">${m.emails.map(e => `<span class="pill">${escapeHTML(e)}</span>`).join('')}</div>`;
+    html += '<table><thead><tr><th>Slot</th><th>Status</th></tr></thead><tbody>';
+    for (const slot of slots) {
+      const busy = busyAttendees(m, slot, busyMap);
+      if (busy.length === 0) {
+        html += `<tr><td><span class="mono">${slot.dayName.slice(0,3)} ${slot.timeLabel}</span></td><td><span class="check-icon">✓</span> all free</td></tr>`;
+      } else {
+        html += `<tr><td><span class="mono">${slot.dayName.slice(0,3)} ${slot.timeLabel}</span></td><td><span class="x-icon">✗</span> ${busy.map(b => `<span class="pill busy">${escapeHTML(b)}</span>`).join('')}</td></tr>`;
+      }
+    }
+    html += '</tbody></table>';
+    html += '</div>';
+  }
+  html += '</details></div>';
+
+  window._currentAssigned = assigned;
+  window._currentSlots = slots;
+
+  document.getElementById('output').innerHTML = html;
+}
+
+function copyTSV() {
+  const assigned = window._currentAssigned || {};
+  const slots = window._currentSlots || [];
+  const tz = document.getElementById('tz').value;
+  const tzAbbrev = { 'America/Chicago':'CT','America/New_York':'ET','America/Denver':'MT','America/Los_Angeles':'PT' }[tz] || '';
+  let tsv = '';
+  let lastDate = '';
+  for (const slot of slots) {
+    if (slot.date !== lastDate) {
+      if (tsv) tsv += '\n';
+      tsv += `${slot.dayName}, ${slot.monthDay}\n`;
+      lastDate = slot.date;
+    }
+    const m = assigned[slot.startISO];
+    if (m) {
+      tsv += `${slot.timeLabel} ${tzAbbrev}\t${m.name}\t${m.emails.join(', ')}\n`;
+    }
+  }
+  navigator.clipboard.writeText(tsv.trim()).then(() => {
+    document.getElementById('copyMsg').innerHTML = '<span class="copied">Copied. Paste into the sheet.</span>';
+    setTimeout(() => { const el = document.getElementById('copyMsg'); if (el) el.textContent = ''; }, 2500);
+  }).catch(() => {
+    document.getElementById('copyMsg').textContent = 'Copy failed — select and copy manually.';
+  });
+}
+</script>
