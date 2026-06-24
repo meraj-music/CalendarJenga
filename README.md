@@ -15,7 +15,7 @@
 
 ## What is this?
 
-Calendar Jenga is a free, open-source tool that finds available meeting slots across multiple people's Google Calendars — instantly. No more toggling between "Find a time" tabs, no more Slack threads asking "does 10:30 work for everyone?"
+Calendar Jenga is a free, open-source tool that finds available meeting slots across multiple people's Google Calendars, instantly. No more toggling between "Find a time" tabs, no more Slack threads asking "does 10:30 work for everyone?"
 
 You give it a list of meetings with attendee emails, a time window, and it checks everyone's real calendar availability and sorts the meetings into open slots automatically.
 
