@@ -4,7 +4,7 @@
 
 <p align="center">
   Stop playing calendar Tetris by hand.<br>
-  Paste your meetings, connect to Google Calendar, get a schedule that actually works.
+  Connect to Google Calendar, paste your meetings, get a schedule that actually works.
 </p>
 
 <p align="center">
